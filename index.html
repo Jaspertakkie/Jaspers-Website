@@ -125,6 +125,13 @@
         .toggle-button {
             margin-top: 20px;
         }
+        .update-btn {
+            background-color: #f39c12;
+            color: white;
+        }
+        .update-btn:hover {
+            background-color: #e67e22;
+        }
     </style>
 </head>
 <body>
@@ -174,8 +181,8 @@
         <div class="toevoegen-form" id="toevoegenForm">
             <h3>Nieuw product toevoegen</h3>
             <p>Welk rijnummer hoort bij het product?</p>
-            <input type="number" id="rijNummer" placeholder="Voer rijnummer in" required>
             <input type="text" id="productBeschrijving" placeholder="Voer een beschrijving in" required>
+			<input type="number" id="rijNummer" placeholder="Voer rijnummer in" required>
             <button id="toevoegenButton">Product toevoegen</button>
         </div>
     </div>
@@ -227,11 +234,13 @@
                 lijstSelect.appendChild(option);
             });
         }
+
+        // Initialiseer de lijsten
         updateLijstSelect();
 
         let boodschappen = [];
 
-        // Laad een bestaande lijst
+        // Lijst laden
         document.getElementById('loadListButton').addEventListener('click', function() {
             huidigeLijstNaam = lijstSelect.value;
             if (huidigeLijstNaam) {
@@ -364,6 +373,8 @@
             Object.keys(productLijst).forEach(product => {
                 const li = document.createElement('li');
                 li.textContent = `${product} - ${productLijst[product]}`;
+                
+                // Voeg 'Voeg toe' knop toe
                 const addButton = document.createElement('button');
                 addButton.textContent = 'Voeg toe';
                 addButton.className = 'quick-link';
@@ -371,7 +382,33 @@
                     boodschappen.unshift({ naam: product, aantal: 1 });
                     updateBoodschappenLijst();
                 });
+                
+                // Voeg 'Verwijder' knop toe
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Verwijder';
+                removeButton.className = 'remove-btn';
+                removeButton.addEventListener('click', () => {
+                    delete productLijst[product];
+                    localStorage.setItem(localStorageProductKey, JSON.stringify(productLijst));
+                    updateProductOverview();
+                });
+                
+                // Voeg 'Wijzig' knop toe
+                const updateButton = document.createElement('button');
+                updateButton.textContent = 'Wijzig';
+                updateButton.className = 'update-btn';
+                updateButton.addEventListener('click', () => {
+                    const nieuweRij = prompt('Voer het nieuwe rijnummer in:', productLijst[product]);
+                    if (nieuweRij) {
+                        productLijst[product] = nieuweRij;
+                        localStorage.setItem(localStorageProductKey, JSON.stringify(productLijst));
+                        updateProductOverview();
+                    }
+                });
+
                 li.appendChild(addButton);
+                li.appendChild(removeButton);
+                li.appendChild(updateButton);
                 productOverviewUl.appendChild(li);
             });
         }
@@ -390,6 +427,8 @@
             filteredProducten.forEach(product => {
                 const li = document.createElement('li');
                 li.textContent = `${product} - ${productLijst[product]}`;
+                
+                // Voeg 'Voeg toe' knop toe
                 const addButton = document.createElement('button');
                 addButton.textContent = 'Voeg toe';
                 addButton.className = 'quick-link';
@@ -397,7 +436,33 @@
                     boodschappen.unshift({ naam: product, aantal: 1 });
                     updateBoodschappenLijst();
                 });
+
+                // Voeg 'Verwijder' knop toe
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Verwijder';
+                removeButton.className = 'remove-btn';
+                removeButton.addEventListener('click', () => {
+                    delete productLijst[product];
+                    localStorage.setItem(localStorageProductKey, JSON.stringify(productLijst));
+                    updateFilteredOverview(filteredProducten);
+                });
+
+                // Voeg 'Wijzig' knop toe
+                const updateButton = document.createElement('button');
+                updateButton.textContent = 'Wijzig';
+                updateButton.className = 'update-btn';
+                updateButton.addEventListener('click', () => {
+                    const nieuweRij = prompt('Voer het nieuwe rijnummer in:', productLijst[product]);
+                    if (nieuweRij) {
+                        productLijst[product] = nieuweRij;
+                        localStorage.setItem(localStorageProductKey, JSON.stringify(productLijst));
+                        updateFilteredOverview(filteredProducten);
+                    }
+                });
+
                 li.appendChild(addButton);
+                li.appendChild(removeButton);
+                li.appendChild(updateButton);
                 productOverviewUl.appendChild(li);
             });
         }
@@ -415,9 +480,6 @@
                 productBeschrijvingInput.value = '';
             }
         });
-
-        // Initiale productoverzicht tonen
-        updateProductOverview();
     </script>
 </body>
 </html>
