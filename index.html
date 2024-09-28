@@ -14,23 +14,29 @@
         }
         h1 {
             color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        h2, h3 {
+            color: #333;
         }
         .container {
             max-width: 600px;
             margin: 0 auto;
-            background-color: #fff;
+            background-color: #ffffff;
             padding: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
         }
         form {
             margin-bottom: 20px;
         }
-        input[type="text"], input[type="number"] {
+        input[type="text"], input[type="number"], select {
             padding: 10px;
-            width: 80%;
+            width: calc(100% - 22px);
             font-size: 16px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            margin-bottom: 10px;
         }
         button {
             padding: 10px 15px;
@@ -39,20 +45,22 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            transition: background-color 0.3s;
         }
         button:hover {
             background-color: #45a049;
         }
-        .result, .boodschappenlijst, .toevoegen-form {
+        .result, .boodschappenlijst, .toevoegen-form, .product-overview {
             margin-top: 20px;
             padding: 15px;
             background-color: #e7f9e7;
             border: 1px solid #4CAF50;
-            display: none;
+            border-radius: 8px;
         }
         ul {
             list-style-type: none;
             padding: 0;
+            text-align: left;
         }
         li {
             padding: 10px;
@@ -60,6 +68,62 @@
             background-color: #f9f9f9;
             border: 1px solid #ddd;
             border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .remove-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .remove-btn:hover {
+            background-color: #c0392b;
+        }
+        .count-btn {
+            margin: 0 5px;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .count-btn:hover {
+            background-color: #45a049;
+        }
+        #searchBar {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .quick-link {
+            padding: 5px 10px;
+            margin: 0 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .quick-link:hover {
+            background-color: #45a049;
+        }
+        .share-button {
+            margin-top: 20px;
+            background-color: #3498db;
+        }
+        .share-button:hover {
+            background-color: #2980b9;
+        }
+        .toggle-button {
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -68,6 +132,14 @@
     <div class="container">
         <h1>Boodschappenlijst</h1>
         <p>Voeg je boodschappen toe en ontdek in welke rij ze liggen!</p>
+        
+        <!-- Lijst selecteren -->
+        <select id="lijstSelect">
+            <option value="">Selecteer een lijst...</option>
+        </select>
+        <button id="newListButton">Nieuwe lijst maken</button>
+        <button id="loadListButton">Lijst laden</button>
+
         <form id="boodschappenForm">
             <input type="text" id="product" placeholder="Vul een product in..." required>
             <input type="number" id="aantal" placeholder="Aantal" min="1" required>
@@ -78,34 +150,56 @@
             <h2>Jouw boodschappenlijst:</h2>
             <ul id="lijst"></ul>
             <button id="saveListButton">Boodschappenlijst opslaan</button>
+            <button id="clearListButton">Verwijder volledige lijst</button>
+            <label for="sortOptions">Sorteren op:</label>
+            <select id="sortOptions">
+                <option value="rij">Rij</option>
+                <option value="alfabet">Alfabet</option>
+            </select>
+            <button id="sortListButton">Sorteer lijst</button>
+            <button class="share-button" id="shareListButton">Deel deze lijst</button>
         </div>
 
         <div class="result" id="result"></div>
+
+        <!-- Overzicht van beschikbare producten -->
+        <h3>Kies een product:</h3>
+        <input type="text" id="searchBar" placeholder="Zoek producten...">
+        <div id="productOverview" class="product-overview">
+            <ul id="overzichtProducten"></ul>
+        </div>
+        <button id="toggleProductButton">Bekijk beschikbare producten</button>
 
         <!-- Formulier om een nieuw product toe te voegen -->
         <div class="toevoegen-form" id="toevoegenForm">
             <h3>Nieuw product toevoegen</h3>
             <p>Welk rijnummer hoort bij het product?</p>
             <input type="number" id="rijNummer" placeholder="Voer rijnummer in" required>
+            <input type="text" id="productBeschrijving" placeholder="Voer een beschrijving in" required>
             <button id="toevoegenButton">Product toevoegen</button>
         </div>
     </div>
 
     <script>
-        const productLijst = {
-            "brood": "Rij 1",
-            "melk": "Rij 2",
-            "kaas": "Rij 3",
-            "appels": "Rij 4",
-            "aardappelen": "Rij 5",
-            "pasta": "Rij 6",
-            "chocolade": "Rij 7",
-            "schoonmaakmiddelen": "Rij 8"
+        const localStorageKey = 'boodschappenLijsten';
+        const localStorageProductKey = 'productLijst';
+
+        // Laad of initialiseer producten
+        let productLijst = JSON.parse(localStorage.getItem(localStorageProductKey)) || {
+            "Brood": "Rij 1",
+            "Melk": "Rij 2",
+            "Kaas": "Rij 3",
+            "Appels": "Rij 4",
+            "Aardappelen": "Rij 5",
+            "Pasta": "Rij 6",
+            "Chocolade": "Rij 7",
+            "Schoonmaakmiddelen": "Rij 8"
         };
 
-        let boodschappen = JSON.parse(localStorage.getItem('boodschappen')) || [];
-        let huidigProduct = ""; // Om het huidige onbekende product bij te houden
+        let lijsten = JSON.parse(localStorage.getItem(localStorageKey)) || {};
+        let huidigeLijstNaam = '';
 
+        const lijstSelect = document.getElementById('lijstSelect');
         const form = document.getElementById('boodschappenForm');
         const resultDiv = document.getElementById('result');
         const lijstUl = document.getElementById('lijst');
@@ -113,90 +207,217 @@
         const toevoegenForm = document.getElementById('toevoegenForm');
         const toevoegenButton = document.getElementById('toevoegenButton');
         const saveListButton = document.getElementById('saveListButton');
+        const clearListButton = document.getElementById('clearListButton');
+        const sortListButton = document.getElementById('sortListButton');
+        const shareListButton = document.getElementById('shareListButton');
+        const productOverviewUl = document.getElementById('overzichtProducten');
+        const toggleProductButton = document.getElementById('toggleProductButton');
+        const rijNummerInput = document.getElementById('rijNummer');
+        const productBeschrijvingInput = document.getElementById('productBeschrijving');
+        const sortOptions = document.getElementById('sortOptions');
+        const searchBar = document.getElementById('searchBar');
 
-        // Bij het laden van de pagina de opgeslagen lijst tonen (indien aanwezig)
-        if (boodschappen.length > 0) {
-            updateBoodschappenLijst();
+        // Laad producten in de dropdown
+        function updateLijstSelect() {
+            lijstSelect.innerHTML = '<option value="">Selecteer een lijst...</option>';
+            Object.keys(lijsten).forEach(lijstNaam => {
+                const option = document.createElement('option');
+                option.value = lijstNaam;
+                option.textContent = lijstNaam;
+                lijstSelect.appendChild(option);
+            });
         }
+        updateLijstSelect();
 
+        let boodschappen = [];
+
+        // Laad een bestaande lijst
+        document.getElementById('loadListButton').addEventListener('click', function() {
+            huidigeLijstNaam = lijstSelect.value;
+            if (huidigeLijstNaam) {
+                boodschappen = lijsten[huidigeLijstNaam];
+                updateBoodschappenLijst();
+                alert('Lijst geladen!');
+            }
+        });
+
+        // Maak een nieuwe lijst aan
+        document.getElementById('newListButton').addEventListener('click', function() {
+            huidigeLijstNaam = prompt('Voer een naam voor de nieuwe lijst in:');
+            if (huidigeLijstNaam) {
+                if (!lijsten[huidigeLijstNaam]) {
+                    lijsten[huidigeLijstNaam] = [];
+                    localStorage.setItem(localStorageKey, JSON.stringify(lijsten));
+                    updateLijstSelect();
+                    alert('Nieuwe lijst aangemaakt!');
+                } else {
+                    alert('Deze lijst bestaat al.');
+                }
+            }
+        });
+
+        // Voeg product toe aan de boodschappenlijst
         form.addEventListener('submit', function(event) {
             event.preventDefault();
-            const product = document.getElementById('product').value.toLowerCase();
+            const product = document.getElementById('product').value;
             const aantal = parseInt(document.getElementById('aantal').value);
-            document.getElementById('product').value = '';  // Clear input field
-            document.getElementById('aantal').value = '';  // Clear aantal field
-
-            // Controleer of het product al op de lijst staat
-            const bestaandProduct = boodschappen.find(item => item.product === product);
-
-            if (bestaandProduct) {
-                // Vraag de gebruiker of ze meer van het product willen toevoegen
-                const addMore = confirm(`Je hebt al ${bestaandProduct.aantal}x ${product} op de lijst. Wil je meer toevoegen?`);
-
-                if (addMore) {
-                    bestaandProduct.aantal += aantal;  // Update het aantal
-                    updateBoodschappenLijst();
-                }
-            } else if (productLijst[product]) {
-                // Voeg nieuw product toe aan de lijst
-                boodschappen.push({ product: product, rij: productLijst[product], aantal: aantal });
-
-                // Sorteer de boodschappen op rij
-                boodschappen.sort((a, b) => a.rij.localeCompare(b.rij));
-
-                // Update de boodschappenlijst
+            if (huidigeLijstNaam && product && aantal > 0) {
+                boodschappen.unshift({ naam: product, aantal: aantal }); // Voeg product toe aan het begin
                 updateBoodschappenLijst();
-            } else {
-                huidigProduct = product;  // Onbekend product opslaan
-                resultDiv.textContent = `Sorry, ${product} is niet beschikbaar in het systeem. Wil je het product toevoegen?`;
-                resultDiv.style.display = 'block';
-                toevoegenForm.style.display = 'block';  // Toon form voor toevoegen
+                form.reset();
             }
         });
 
-        toevoegenButton.addEventListener('click', function() {
-            const rijNummer = document.getElementById('rijNummer').value;
-
-            if (rijNummer) {
-                // Voeg nieuw product toe aan de productlijst
-                productLijst[huidigProduct] = `Rij ${rijNummer}`;
-
-                // Voeg nieuw product toe aan de boodschappenlijst
-                boodschappen.push({ product: huidigProduct, rij: `Rij ${rijNummer}`, aantal: 1 });
-
-                // Sorteer de boodschappen op rij
-                boodschappen.sort((a, b) => a.rij.localeCompare(b.rij));
-
-                // Update de boodschappenlijst
-                updateBoodschappenLijst();
-
-                resultDiv.style.display = 'none';  // Verberg resultaat na toevoeging
-                toevoegenForm.style.display = 'none';  // Verberg toevoegen form
-                document.getElementById('rijNummer').value = '';  // Clear rijnummer input
-            }
-        });
-
-        saveListButton.addEventListener('click', function() {
-            // Sla de boodschappenlijst op in localStorage
-            localStorage.setItem('boodschappen', JSON.stringify(boodschappen));
-            alert('Boodschappenlijst opgeslagen!');
-        });
-
+        // Update de boodschappenlijst in de UI
         function updateBoodschappenLijst() {
-            // Maak de lijst zichtbaar
-            boodschappenLijstDiv.style.display = 'block';
-
-            // Maak de huidige lijst leeg
             lijstUl.innerHTML = '';
-
-            // Voeg elke boodschap toe aan de ul met aantal
             boodschappen.forEach(item => {
                 const li = document.createElement('li');
-                li.textContent = `${item.aantal}x ${item.product} - ${item.rij}`;
+                li.textContent = `${item.aantal}x ${item.naam}`;
+                const minusButton = document.createElement('button');
+                minusButton.textContent = '-';
+                minusButton.className = 'count-btn';
+                minusButton.addEventListener('click', () => {
+                    if (item.aantal > 1) {
+                        item.aantal--;
+                        updateBoodschappenLijst();
+                    } else {
+                        boodschappen = boodschappen.filter(i => i !== item);
+                        updateBoodschappenLijst();
+                    }
+                });
+                const plusButton = document.createElement('button');
+                plusButton.textContent = '+';
+                plusButton.className = 'count-btn';
+                plusButton.addEventListener('click', () => {
+                    item.aantal++;
+                    updateBoodschappenLijst();
+                });
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Verwijder';
+                removeButton.className = 'remove-btn';
+                removeButton.addEventListener('click', () => {
+                    boodschappen = boodschappen.filter(i => i !== item);
+                    updateBoodschappenLijst();
+                });
+                li.appendChild(minusButton);
+                li.appendChild(plusButton);
+                li.appendChild(removeButton);
                 lijstUl.appendChild(li);
             });
         }
-    </script>
 
+        // Opslaan van de boodschappenlijst
+        saveListButton.addEventListener('click', function() {
+            if (huidigeLijstNaam) {
+                lijsten[huidigeLijstNaam] = boodschappen;
+                localStorage.setItem(localStorageKey, JSON.stringify(lijsten));
+                alert('Lijst opgeslagen!');
+            }
+        });
+
+        // Lijst leegmaken
+        clearListButton.addEventListener('click', function() {
+            if (huidigeLijstNaam) {
+                boodschappen = [];
+                updateBoodschappenLijst();
+                alert('Lijst is leeggemaakt!');
+            }
+        });
+
+        // Producten sorteren
+        sortListButton.addEventListener('click', function() {
+            const sorterenOp = sortOptions.value;
+            if (sorterenOp === 'rij') {
+                // Sorteer op rij
+                boodschappen.sort((a, b) => productLijst[a.naam].localeCompare(productLijst[b.naam]));
+            } else {
+                // Sorteer alfabetisch
+                boodschappen.sort((a, b) => a.naam.localeCompare(b.naam));
+            }
+            updateBoodschappenLijst();
+        });
+
+        // Deel de boodschappenlijst
+        shareListButton.addEventListener('click', function() {
+            const lijstTekst = boodschappen.map(item => `${item.aantal}x ${item.naam}`).join('\n');
+            navigator.clipboard.writeText(lijstTekst).then(() => {
+                alert('Boodschappenlijst gekopieerd naar het klembord!');
+            });
+        });
+
+        // Toggle product overview
+        toggleProductButton.addEventListener('click', function() {
+            const isHidden = productOverviewUl.style.display === 'none' || productOverviewUl.style.display === '';
+            productOverviewUl.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) {
+                updateProductOverview();
+                toggleProductButton.textContent = 'Verberg beschikbare producten';
+            } else {
+                toggleProductButton.textContent = 'Bekijk beschikbare producten';
+            }
+        });
+
+        // Update product overview
+        function updateProductOverview() {
+            productOverviewUl.innerHTML = '';
+            Object.keys(productLijst).forEach(product => {
+                const li = document.createElement('li');
+                li.textContent = `${product} - ${productLijst[product]}`;
+                const addButton = document.createElement('button');
+                addButton.textContent = 'Voeg toe';
+                addButton.className = 'quick-link';
+                addButton.addEventListener('click', () => {
+                    boodschappen.unshift({ naam: product, aantal: 1 });
+                    updateBoodschappenLijst();
+                });
+                li.appendChild(addButton);
+                productOverviewUl.appendChild(li);
+            });
+        }
+
+        // Zoekfunctie
+        searchBar.addEventListener('input', function() {
+            const query = searchBar.value.toLowerCase();
+            const producten = Object.keys(productLijst);
+            const filteredProducten = producten.filter(product => product.toLowerCase().includes(query));
+            updateFilteredOverview(filteredProducten);
+        });
+
+        // Update filtered product overview
+        function updateFilteredOverview(filteredProducten) {
+            productOverviewUl.innerHTML = '';
+            filteredProducten.forEach(product => {
+                const li = document.createElement('li');
+                li.textContent = `${product} - ${productLijst[product]}`;
+                const addButton = document.createElement('button');
+                addButton.textContent = 'Voeg toe';
+                addButton.className = 'quick-link';
+                addButton.addEventListener('click', () => {
+                    boodschappen.unshift({ naam: product, aantal: 1 });
+                    updateBoodschappenLijst();
+                });
+                li.appendChild(addButton);
+                productOverviewUl.appendChild(li);
+            });
+        }
+
+        // Nieuw product toevoegen
+        toevoegenButton.addEventListener('click', function() {
+            const rijNummer = rijNummerInput.value;
+            const productBeschrijving = productBeschrijvingInput.value;
+            if (rijNummer && productBeschrijving) {
+                productLijst[productBeschrijving] = `Rij ${rijNummer}`;
+                localStorage.setItem(localStorageProductKey, JSON.stringify(productLijst));
+                alert('Product toegevoegd!');
+                updateProductOverview();
+                rijNummerInput.value = '';
+                productBeschrijvingInput.value = '';
+            }
+        });
+
+        // Initiale productoverzicht tonen
+        updateProductOverview();
+    </script>
 </body>
 </html>
