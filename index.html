@@ -1,20 +1,202 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mijn Website</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boodschappenlijst</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="number"] {
+            padding: 10px;
+            width: 80%;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result, .boodschappenlijst, .toevoegen-form {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e7f9e7;
+            border: 1px solid #4CAF50;
+            display: none;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Welkom Bert op mijn website!</h1>
-  </header>
-  <main>
-    <p>Dit is een eenvoudige website die ik aan het bouwen ben.</p>
-  </main>
-  <footer>
-    <p>&copy; 2024 Jasper Leijssenaar</p>
-  </footer>
+
+    <div class="container">
+        <h1>Boodschappenlijst</h1>
+        <p>Voeg je boodschappen toe en ontdek in welke rij ze liggen!</p>
+        <form id="boodschappenForm">
+            <input type="text" id="product" placeholder="Vul een product in..." required>
+            <input type="number" id="aantal" placeholder="Aantal" min="1" required>
+            <button type="submit">Voeg toe aan lijst</button>
+        </form>
+
+        <div class="boodschappenlijst" id="boodschappenlijst">
+            <h2>Jouw boodschappenlijst:</h2>
+            <ul id="lijst"></ul>
+            <button id="saveListButton">Boodschappenlijst opslaan</button>
+        </div>
+
+        <div class="result" id="result"></div>
+
+        <!-- Formulier om een nieuw product toe te voegen -->
+        <div class="toevoegen-form" id="toevoegenForm">
+            <h3>Nieuw product toevoegen</h3>
+            <p>Welk rijnummer hoort bij het product?</p>
+            <input type="number" id="rijNummer" placeholder="Voer rijnummer in" required>
+            <button id="toevoegenButton">Product toevoegen</button>
+        </div>
+    </div>
+
+    <script>
+        const productLijst = {
+            "brood": "Rij 1",
+            "melk": "Rij 2",
+            "kaas": "Rij 3",
+            "appels": "Rij 4",
+            "aardappelen": "Rij 5",
+            "pasta": "Rij 6",
+            "chocolade": "Rij 7",
+            "schoonmaakmiddelen": "Rij 8"
+        };
+
+        let boodschappen = JSON.parse(localStorage.getItem('boodschappen')) || [];
+        let huidigProduct = ""; // Om het huidige onbekende product bij te houden
+
+        const form = document.getElementById('boodschappenForm');
+        const resultDiv = document.getElementById('result');
+        const lijstUl = document.getElementById('lijst');
+        const boodschappenLijstDiv = document.getElementById('boodschappenlijst');
+        const toevoegenForm = document.getElementById('toevoegenForm');
+        const toevoegenButton = document.getElementById('toevoegenButton');
+        const saveListButton = document.getElementById('saveListButton');
+
+        // Bij het laden van de pagina de opgeslagen lijst tonen (indien aanwezig)
+        if (boodschappen.length > 0) {
+            updateBoodschappenLijst();
+        }
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const product = document.getElementById('product').value.toLowerCase();
+            const aantal = parseInt(document.getElementById('aantal').value);
+            document.getElementById('product').value = '';  // Clear input field
+            document.getElementById('aantal').value = '';  // Clear aantal field
+
+            // Controleer of het product al op de lijst staat
+            const bestaandProduct = boodschappen.find(item => item.product === product);
+
+            if (bestaandProduct) {
+                // Vraag de gebruiker of ze meer van het product willen toevoegen
+                const addMore = confirm(`Je hebt al ${bestaandProduct.aantal}x ${product} op de lijst. Wil je meer toevoegen?`);
+
+                if (addMore) {
+                    bestaandProduct.aantal += aantal;  // Update het aantal
+                    updateBoodschappenLijst();
+                }
+            } else if (productLijst[product]) {
+                // Voeg nieuw product toe aan de lijst
+                boodschappen.push({ product: product, rij: productLijst[product], aantal: aantal });
+
+                // Sorteer de boodschappen op rij
+                boodschappen.sort((a, b) => a.rij.localeCompare(b.rij));
+
+                // Update de boodschappenlijst
+                updateBoodschappenLijst();
+            } else {
+                huidigProduct = product;  // Onbekend product opslaan
+                resultDiv.textContent = `Sorry, ${product} is niet beschikbaar in het systeem. Wil je het product toevoegen?`;
+                resultDiv.style.display = 'block';
+                toevoegenForm.style.display = 'block';  // Toon form voor toevoegen
+            }
+        });
+
+        toevoegenButton.addEventListener('click', function() {
+            const rijNummer = document.getElementById('rijNummer').value;
+
+            if (rijNummer) {
+                // Voeg nieuw product toe aan de productlijst
+                productLijst[huidigProduct] = `Rij ${rijNummer}`;
+
+                // Voeg nieuw product toe aan de boodschappenlijst
+                boodschappen.push({ product: huidigProduct, rij: `Rij ${rijNummer}`, aantal: 1 });
+
+                // Sorteer de boodschappen op rij
+                boodschappen.sort((a, b) => a.rij.localeCompare(b.rij));
+
+                // Update de boodschappenlijst
+                updateBoodschappenLijst();
+
+                resultDiv.style.display = 'none';  // Verberg resultaat na toevoeging
+                toevoegenForm.style.display = 'none';  // Verberg toevoegen form
+                document.getElementById('rijNummer').value = '';  // Clear rijnummer input
+            }
+        });
+
+        saveListButton.addEventListener('click', function() {
+            // Sla de boodschappenlijst op in localStorage
+            localStorage.setItem('boodschappen', JSON.stringify(boodschappen));
+            alert('Boodschappenlijst opgeslagen!');
+        });
+
+        function updateBoodschappenLijst() {
+            // Maak de lijst zichtbaar
+            boodschappenLijstDiv.style.display = 'block';
+
+            // Maak de huidige lijst leeg
+            lijstUl.innerHTML = '';
+
+            // Voeg elke boodschap toe aan de ul met aantal
+            boodschappen.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.aantal}x ${item.product} - ${item.rij}`;
+                lijstUl.appendChild(li);
+            });
+        }
+    </script>
+
 </body>
 </html>
